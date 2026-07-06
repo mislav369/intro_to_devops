@@ -93,3 +93,53 @@ k3s is a lightweight Kubernetes: a single small binary with a light database and
 
 <br>
 <br>
+
+Defend whether a small team should use Docker Compose on a single host or move straight to Kubernetes,
+considering complexity, scaling needs, and resilience.
+
+<br>
+
+For a small team I would defend starting with Docker Compose. It is simple, one file describes the whole stack, and there is almost no operational overhead, which fits a team that just needs to run a few services. The limits are that it lives on a single host, so it does not scale across machines and has no self healing if the host dies. Kubernetes fixes those but brings a lot of complexity and maintenance that a small team usually cannot justify yet. So use Compose until you genuinely need multi host scaling or resilience, then move to Kubernetes.
+
+<br>
+<br>
+
+Analyze vendor lock-in across Kubernetes (open source / CNCF) and OpenShift (Red Hat). How does the
+choice affect long-term flexibility?
+
+<br>
+
+Plain Kubernetes is an open CNCF project with a standard API, so you can move between clouds and providers fairly freely, which keeps long term flexibility high. OpenShift is Red Hat's product built on Kubernetes, and once you use its specific features like Routes, BuildConfigs, and S2I, you get tied to Red Hat and moving off takes real work. The trade off is that OpenShift gives you an integrated supported platform in exchange for less portability, while vanilla Kubernetes keeps you flexible but you assemble more yourself.
+
+<br>
+<br>
+
+Defend a recommendation of OpenShift over vanilla Kubernetes for a company that wants an integrated,
+vendor-supported platform with built-in developer and operations tooling.
+
+<br>
+
+For a company that wants everything in one supported package, OpenShift is the right call. It ships with built in developer tooling like the console and Source to Image, and built in operations tooling like monitoring, logging, and an image registry, so teams are productive without bolting all that on. It is secure by default and comes with Red Hat support, which matters for reliability and compliance. The cost is money and some lock in, but for a company that values an integrated, vendor backed platform that is a fair trade.
+
+<br>
+<br>
+
+ Compare storage provisioning between Kubernetes and regular VM workloads.
+
+<br>
+
+With VMs you usually provision storage manually: an admin creates or attaches a disk and mounts it, and it is tied to that specific VM. Kubernetes does this dynamically: the app just asks with a PVC, a StorageClass provisions the disk automatically through CSI, and the volume reattaches to the pod even if it moves to another node. So VM storage is manual and static and tied to one machine, while Kubernetes storage is automatic, on demand, and follows the workload.
+
+<br>
+<br>
+
+A startup with two engineers must ship a containerized product quickly and cheaply. Recommend container
+solution and justify your choice on cost and operational overhead.
+
+<br>
+
+With only two engineers I would recommend Docker Compose on a single server, or a small managed container service, rather than Kubernetes. Compose is cheap and has almost no operational overhead, so the tiny team spends time on the product instead of running a cluster. Full Kubernetes would eat their time and money for scale they do not have yet. Once the product grows and actually needs scaling and high availability, they can move to a managed Kubernetes service so they still avoid running the control plane themselves.
+
+<br>
+<br>
+
