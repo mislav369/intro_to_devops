@@ -143,3 +143,82 @@ With only two engineers I would recommend Docker Compose on a single server, or 
 <br>
 <br>
 
+Compare Docker and Podman in terms of architecture (daemon vs daemonless) and rootless security. Why
+might a security-conscious team prefer Podman?
+
+<br>
+
+Docker runs a central daemon, a background service that does all the work and normally runs as root, so every container traces back to that one privileged process. Podman is daemonless: it starts containers directly as child processes with no central service, and it runs rootless easily, meaning containers run under your own user without root privileges. A security conscious team prefers Podman because there is no root daemon to attack, and if a container is compromised it is confined to an unprivileged user instead of root, so the blast radius is much smaller.
+
+<br>
+<br>
+
+Compare the day-2 operational overhead (cluster upgrades, scaling nodes, backups) of self-managed
+Kubernetes versus a managed Kubernetes service.
+
+<br>
+
+With self managed Kubernetes you do everything yourself: upgrading the control plane, adding and removing nodes, and backing up the cluster state, which is a lot of ongoing work and expertise. A managed service like EKS or GKE runs the control plane for you and handles upgrades and much of the scaling and backup, so your team just runs workloads. So self managed gives more control but heavy day 2 overhead, managed trades a bit of control and cost for far less operational burden.
+
+<br>
+<br>
+
+A media-streaming company expects spiky, unpredictable global traffic. Recommend a containerized
+solution. Elaborate your choice.
+
+<br>
+
+For spiky global traffic I would recommend a managed Kubernetes service across cloud regions. Kubernetes autoscaling fits perfectly: the Horizontal Pod Autoscaler adds pod replicas when traffic surges and the Cluster Autoscaler adds nodes, then both scale back down when it quiets, so you pay for peaks only when they happen. Running it managed and multi region gives the elasticity and global reach a streaming service needs without the team babysitting the control plane.
+
+<br>
+<br>
+
+Defend whether a company that has outgrown Docker Swarm (or a single Compose host) should migrate to
+Kubernetes — weigh the migration effort against the long-term benefits.
+
+<br>
+
+Yes, I would defend migrating. Once you have outgrown a single host you need real scaling, self healing, and rolling updates, and that is exactly what Kubernetes is built for, with a huge ecosystem behind it. The migration costs real effort, since you rewrite manifests and learn new concepts, but it is a one time cost against long term benefits of resilience and room to grow. So if the growth is genuine and ongoing, the long term payoff outweighs the migration effort.
+
+<br>
+<br>
+
+Would you choose Kubernetes as a solution for a microservices architecture, focus on its orchestration,
+resilience and ecosystem. Elaborate your standing with arguments.
+
+<br>
+
+Yes. Microservices mean many small services that all need to be deployed, scaled, and connected, and Kubernetes handles exactly that: it orchestrates them, gives each a Service with built in discovery and load balancing, and scales them independently. Its resilience helps too, since it restarts failed pods and reschedules them automatically. On top of that the ecosystem around it, like Helm and service meshes, is built for microservices, so it is a strong fit as long as the team can handle the complexity.
+
+<br>
+<br>
+
+Would you choose Kubernetes for enterprise-grade applications, focus on its scalability, community support
+and feature richness. Elaborate your standing with arguments.
+
+<br>
+
+Yes. Enterprise apps need to scale to heavy load, and Kubernetes scales both pods and nodes automatically to handle it. It has massive community support as a CNCF project, so it is well tested, well documented, and not going away, which matters for something a business depends on. It is also very feature rich, covering rolling updates, self healing, secrets, storage, and role based access, so it can meet demanding enterprise requirements. The one caveat is you need the skills to run it, but for enterprise scale that investment is justified.
+
+<br>
+<br>
+
+Would you choose OpenShift as a solution for a microservices architecture, focus on its orchestration,
+resilience and ecosystem. Elaborate your standing with arguments.
+
+<br>
+
+Yes. OpenShift is Kubernetes underneath, so it orchestrates and self heals microservices just as well, and adds things that help a microservices team, like built in CI/CD through Source to Image, an integrated registry, and easy external routing with Routes. That means teams can build, deploy, and connect many services faster and more securely out of the box. So it is a strong fit for microservices, the trade offs being cost and some vendor lock in compared to plain Kubernetes.
+
+<br>
+<br>
+
+Would you choose OpenShift for enterprise-grade applications, focus on its scalability, community support
+and feature richness. Elaborate your standing with arguments
+
+<br>
+
+Yes. It scales like Kubernetes because it is built on it, so it handles enterprise load, and it adds secure defaults, integrated tooling, and Red Hat support, which enterprises value for reliability and compliance. On community and features, it gives you the whole Kubernetes ecosystem plus Red Hat's own enterprise features on top, so it is very feature rich. The downsides are licensing cost and lock in, but for a business that wants a supported, hardened, all in one platform, OpenShift is a solid enterprise choice.
+
+<br>
+<br>
