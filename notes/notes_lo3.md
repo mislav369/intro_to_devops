@@ -1,5 +1,32 @@
-Create a pod with podman pod create (publishing a port), add an app container and a database container to
-it, and show they reach each other over localhost (shared network namespace).
+# LO3 — Application delivery using containers, network architecture, and component security
+
+For the file based ones (compose.yaml, nginx.conf, pod YAML) the steps are always the same three: open the file with `vi`, type in the full content shown, then run the command that uses it. 
+
+> How to use `vi` quickly: type `vi name.yaml`, press `i` to start typing, paste or type the content, press `Esc`, then type `:wq` and Enter to save and quit.
+
+---
+
+## 0. One-time setup (run once at the start)
+
+Podman is already installed on the exam VM. Quick check that it and compose work:
+
+```bash
+podman version
+podman compose version    # if this errors, try: podman-compose version
+```
+
+Handy check-and-clean commands you will reuse:
+
+```bash
+podman ps -a                 # list all containers
+podman logs <name>           # see why a container exited
+podman rm -f <name>          # remove a container
+podman volume rm <name>      # remove a volume
+```
+
+---
+
+## 1. Create a pod with podman pod create (publishing a port), add an app container and a database container to it, and show they reach each other over localhost (shared network namespace).
 
 ```bash
 podman pod create --name mypod -p 8080:80
@@ -13,8 +40,7 @@ All containers in a pod share one network namespace, so they reach each other on
 
 ---
 
-Create a user-defined network, run an app container and a postgres container on it, and prove the app
-resolves the database by container name (podman DNS on custom networks).
+## 2. Create a user-defined network, run an app container and a postgres container on it, and prove the app resolves the database by container name (podman DNS on custom networks).
 
 ```bash
 podman network create mynet
@@ -27,8 +53,7 @@ On a user defined network Podman runs an internal DNS server, so containers can 
 
 ---
 
-Deploy a two-tier stack of your choice that is not Drupal/Joomla/WordPress (e.g. Ghost + MySQL, Gitea +
-PostgreSQL, or Redmine + PostgreSQL) and complete its first-run setup.
+## 3. Deploy a two-tier stack of your choice that is not Drupal/Joomla/WordPress (e.g. Ghost + MySQL, Gitea + PostgreSQL, or Redmine + PostgreSQL) and complete its first-run setup.
 
 Example: Gitea + PostgreSQL.
 
@@ -45,8 +70,7 @@ Open `http://localhost:3000` and complete the setup form: database type PostgreS
 
 ---
 
-Persist the database's data in a named volume so it survives podman rm + re-creation of the DB container;
-prove the data is still there afterward.
+## 4. Persist the database's data in a named volume so it survives podman rm + re-creation of the DB container; prove the data is still there afterward.
 
 ```bash
 podman volume create pgdata
@@ -63,8 +87,7 @@ A named volume lives outside the container lifecycle, so removing and recreating
 
 ---
 
-Use a podman secret (podman secret create + --secret) to pass the database password instead of --env;
-explain the security benefit.
+## 5. Use a podman secret (podman secret create + --secret) to pass the database password instead of --env; explain the security benefit.
 
 ```bash
 printf "my-secret-pw" | podman secret create db_pass -
@@ -80,11 +103,17 @@ The secret is stored in Podman's encrypted secret store and injected only at run
 
 ---
 
-Write a podman compose file (compose.yaml) for an app + database, bring it up with podman compose up -
-d, and show both services running.
+## 6. Write a podman compose file (compose.yaml) for an app + database, bring it up with podman compose up -d, and show both services running.
+
+Create the file:
+
+```bash
+vi compose.yaml
+```
+
+Put this inside:
 
 ```yaml
-# compose.yaml
 services:
   db:
     image: docker.io/library/postgres:16
@@ -100,6 +129,8 @@ services:
       - db
 ```
 
+Then bring it up and check:
+
 ```bash
 podman compose up -d
 podman compose ps      # both services show as running
@@ -107,8 +138,15 @@ podman compose ps      # both services show as running
 
 ---
 
-In that compose file, keep the database on an internal network with no published port and expose only the
-app; prove the DB isn't reachable from the host.
+## 7. In that compose file, keep the database on an internal network with no published port and expose only the app; prove the DB isn't reachable from the host.
+
+Create the file:
+
+```bash
+vi compose.yaml
+```
+
+Put this inside:
 
 ```yaml
 services:
@@ -129,18 +167,27 @@ networks:
   backend:
 ```
 
+Then bring it up and prove it:
+
 ```bash
 podman compose up -d
-podman exec compose_app_1 getent hosts db   # app reaches db by name
-nc -zv localhost 5432                        # from host: connection refused
+podman compose exec app getent hosts db   # app reaches db by name
+nc -zv localhost 5432                      # from host: connection refused
 ```
 
 The database publishes no host port, so only containers on the shared `backend` network can reach it. The host has no route to it.
 
 ---
 
-Add a compose healthcheck plus depends_on: condition: service_healthy so the app waits for the database;
-demonstrate the startup ordering.
+## 8. Add a compose healthcheck plus depends_on: condition: service_healthy so the app waits for the database; demonstrate the startup ordering.
+
+Create the file:
+
+```bash
+vi compose.yaml
+```
+
+Put this inside:
 
 ```yaml
 services:
@@ -160,18 +207,40 @@ services:
         condition: service_healthy
 ```
 
-The app container will not start until the database healthcheck reports healthy. Watching `podman compose up` you see the app wait for the DB to pass its check first.
+Then bring it up and watch the ordering:
+
+```bash
+podman compose up -d
+podman compose ps
+```
+
+The app container will not start until the database healthcheck reports healthy. Watching the startup you see the app wait for the DB to pass its check first.
 
 ---
 
-Use an env_file: in compose for the database credentials instead of inline values.
+## 9. Use an env_file: in compose for the database credentials instead of inline values.
+
+First create the env file:
 
 ```bash
-# db.env
+vi db.env
+```
+
+Put this inside:
+
+```
 POSTGRES_PASSWORD=secret
 POSTGRES_USER=appuser
 POSTGRES_DB=appdb
 ```
+
+Then create the compose file:
+
+```bash
+vi compose.yaml
+```
+
+Put this inside:
 
 ```yaml
 services:
@@ -181,43 +250,54 @@ services:
       - db.env
 ```
 
-Credentials live in a separate file instead of inline in the compose file, so you can keep them out of version control (for example with a `.gitignore`).
+Then bring it up:
+
+```bash
+podman compose up -d
+podman compose ps
+```
+
+Credentials live in a separate file instead of inline in the compose file, so you can keep them out of version control with a `.gitignore`.
 
 ---
 
-Scale one compose service to multiple replicas (podman compose up --scale app=3) and explain how
-requests are distributed.
+## 10. Scale one compose service to multiple replicas (podman compose up --scale app=3) and explain how requests are distributed.
+
+Using the compose.yaml from question 6 (but remove the fixed host port on `app` first, since only one container can own a host port):
 
 ```bash
 podman compose up -d --scale app=3
+podman compose ps      # three app replicas
 ```
 
-This starts three replicas of `app`. Because they share a service name, the internal DNS returns multiple addresses and requests are spread across the replicas by round robin. In practice you put a reverse proxy or load balancer in front so a single host port can fan out to all three, since only one container can own a fixed host port.
+This starts three replicas of `app`. Because they share a service name, the internal DNS returns multiple addresses and requests are spread across the replicas by round robin. In practice you put a reverse proxy in front so a single host port can fan out to all three.
 
 ---
 
-Mount a bind mount for app configuration and a named volume for data in the same container, and explain
-why you'd use each.
+## 11. Mount a bind mount for app configuration and a named volume for data in the same container, and explain why you'd use each.
 
 ```bash
+mkdir -p ./config
+echo "setting=value" > ./config/app.conf
+podman volume create appdata
 podman run -d --name app \
   -v ./config:/etc/app:ro \
   -v appdata:/var/lib/app \
-  myapp
+  docker.io/library/nginx
 ```
 
 The bind mount points at a host directory, which is ideal for configuration you want to edit directly from the host (read only here so the container cannot change it). The named volume is Podman managed storage, better for durable application data you want to persist and back up independently of any host path.
 
 ---
 
-Back up a named volume to a tarball using a helper alpine/busybox container that mounts the volume, then
-restore it into a fresh volume.
+## 12. Back up a named volume to a tarball using a helper alpine/busybox container that mounts the volume, then restore it into a fresh volume.
 
 ```bash
 # backup
+mkdir -p ./backup
 podman run --rm -v pgdata:/data:ro -v ./backup:/backup docker.io/library/alpine \
   tar czf /backup/pgdata.tar.gz -C /data .
-# restore
+# restore into a fresh volume
 podman volume create pgdata_new
 podman run --rm -v pgdata_new:/data -v ./backup:/backup docker.io/library/alpine \
   tar xzf /backup/pgdata.tar.gz -C /data
@@ -227,18 +307,17 @@ A throwaway helper container mounts the volume plus a host backup folder and tar
 
 ---
 
-Put an nginx reverse-proxy container in front of an app container on a shared network and route host traffic
-through nginx to the app.
+## 13. Put an nginx reverse-proxy container in front of an app container on a shared network and route host traffic through nginx to the app.
+
+First create the nginx config file:
 
 ```bash
-podman network create webnet
-podman run -d --network webnet --name app docker.io/library/httpd
-podman run -d --network webnet --name proxy -p 8080:80 \
-  -v ./nginx.conf:/etc/nginx/conf.d/default.conf:ro docker.io/library/nginx
+vi nginx.conf
 ```
 
-```nginx
-# nginx.conf
+Put this inside:
+
+```
 server {
   listen 80;
   location / {
@@ -247,12 +326,21 @@ server {
 }
 ```
 
+Then run both containers on a shared network:
+
+```bash
+podman network create webnet
+podman run -d --network webnet --name app docker.io/library/httpd
+podman run -d --network webnet --name proxy -p 8080:80 \
+  -v ./nginx.conf:/etc/nginx/conf.d/default.conf:ro docker.io/library/nginx
+curl http://localhost:8080
+```
+
 Both containers are on the same network, so nginx resolves `app` by name. The host reaches nginx on port 8080 and nginx forwards the request to the app. The app itself never needs a published port.
 
 ---
 
-Add a database-admin container (e.g. adminer or pgadmin) to the network and use it to inspect the
-database.
+## 14. Add a database-admin container (e.g. adminer or pgadmin) to the network and use it to inspect the database.
 
 ```bash
 podman run -d --network mynet --name adminer -p 8081:8080 docker.io/library/adminer
@@ -262,22 +350,46 @@ Open `http://localhost:8081`, choose system PostgreSQL, server `db`, and log in 
 
 ---
 
-Generate Kubernetes YAML from a running pod with podman generate kube and explain how it bridges LO3
-to LO4.
+## 15. Generate Kubernetes YAML from a running pod with podman generate kube and explain how it bridges LO3 to LO4.
 
 ```bash
 podman generate kube mypod > mypod.yaml
+cat mypod.yaml
 ```
 
 This exports the pod and its containers as a Kubernetes manifest. It bridges LO3 to LO4 because you can build and test a stack locally with Podman, then take the generated YAML and run the same workload on a real Kubernetes cluster.
 
 ---
 
-Run a pod from a Kubernetes YAML with podman kube play, then tear it down with podman kube play --
-down.
+## 16. Run a pod from a Kubernetes YAML with podman kube play, then tear it down with podman kube play --down.
+
+Create the file:
+
+```bash
+vi mypod.yaml
+```
+
+Put this inside:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: webpod
+spec:
+  containers:
+    - name: web
+      image: docker.io/library/nginx
+      ports:
+        - containerPort: 80
+          hostPort: 8090
+```
+
+Then play it and tear it down:
 
 ```bash
 podman kube play mypod.yaml
+podman ps
 podman kube play --down mypod.yaml
 ```
 
@@ -285,18 +397,30 @@ podman kube play --down mypod.yaml
 
 ---
 
-Set per-service CPU/memory limits in a compose file and verify them with podman stats.
+## 17. Set per-service CPU/memory limits in a compose file and verify them with podman stats.
+
+Create the file:
+
+```bash
+vi compose.yaml
+```
+
+Put this inside:
 
 ```yaml
 services:
   app:
     image: docker.io/library/nginx
+    ports:
+      - "8080:80"
     deploy:
       resources:
         limits:
           cpus: "0.5"
           memory: 256M
 ```
+
+Then bring it up and verify:
 
 ```bash
 podman compose up -d
@@ -307,19 +431,18 @@ podman stats     # shows CPU % and MEM usage / limit per container
 
 ---
 
-Inspect a pod with podman pod inspect and show which Linux namespaces the containers share (network,
-IPC) and which they don't (PID by default).
+## 18. Inspect a pod with podman pod inspect and show which Linux namespaces the containers share (network, IPC) and which they don't (PID by default).
 
 ```bash
 podman pod inspect mypod
+podman pod inspect mypod --format '{{.SharedNamespaces}}'
 ```
 
-Look at `SharedNamespaces`. By default containers in a pod share the network, IPC, and UTS namespaces, which is why they talk over localhost and share hostname. They do not share the PID namespace by default, so each container sees only its own processes unless you create the pod with `--share=pid`.
+Look at `SharedNamespaces`. By default containers in a pod share the network, IPC, and UTS namespaces, which is why they talk over localhost and share a hostname. They do not share the PID namespace by default, so each container sees only its own processes unless you create the pod with `--share=pid`.
 
 ---
 
-Demonstrate name-based discovery failing when two containers are on different networks, then fix it by
-attaching them to a common network.
+## 19. Demonstrate name-based discovery failing when two containers are on different networks, then fix it by attaching them to a common network.
 
 ```bash
 podman network create net1
@@ -335,20 +458,21 @@ Name resolution only works between containers on the same user defined network. 
 
 ---
 
-Attach a single container to two networks (a frontend and a backend) and explain the segmentation benefit.
+## 20. Attach a single container to two networks (a frontend and a backend) and explain the segmentation benefit.
 
 ```bash
 podman network create frontend
 podman network create backend
 podman run -d --name app --network frontend docker.io/library/nginx
 podman network connect backend app
+podman inspect app --format '{{.NetworkSettings.Networks}}'
 ```
 
 The app sits on the frontend network (facing users) and the backend network (talking to the database), while the database stays only on backend. The segmentation benefit is that the database is never exposed on the frontend network, so traffic is isolated and the attack surface is smaller.
 
 ---
 
-Use podman compose logs and podman compose ps to observe and troubleshoot a multi-service stack.
+## 21. Use podman compose logs and podman compose ps to observe and troubleshoot a multi-service stack.
 
 ```bash
 podman compose ps          # status of every service
@@ -360,29 +484,38 @@ podman compose logs app    # just one service
 
 ---
 
-Share configuration across two replicas of the same app via a shared named volume, and explain a risk of
-shared read-write storage.
+## 22. Share configuration across two replicas of the same app via a shared named volume, and explain a risk of shared read-write storage.
+
+Create the file:
+
+```bash
+vi compose.yaml
+```
+
+Put this inside:
 
 ```yaml
 services:
   app:
-    image: myapp
+    image: docker.io/library/nginx
     volumes:
       - shared:/shared
 volumes:
   shared:
 ```
 
+Then bring it up scaled to two replicas:
+
 ```bash
 podman compose up -d --scale app=2
+podman compose ps
 ```
 
 Both replicas mount the same volume, so they see the same files. The risk is that shared read write storage has no coordination between replicas, so two containers writing the same file at once can cause race conditions or data corruption. Shared volumes are safest when the data is read only or writes are carefully partitioned.
 
 ---
 
-Tear down a stack with podman compose down, then explain what happens to named volumes and how --
-volumes changes that.
+## 23. Tear down a stack with podman compose down, then explain what happens to named volumes and how --volumes changes that.
 
 ```bash
 podman compose down             # removes containers and networks, keeps named volumes
@@ -390,3 +523,15 @@ podman compose down --volumes   # also removes the named volumes, deleting the d
 ```
 
 By default `down` leaves named volumes in place, so your data survives a teardown and is still there next time you bring the stack up. Adding `--volumes` (or `-v`) also deletes the named volumes declared in the file, wiping the data with them.
+
+---
+
+## Cleanup at the end
+
+```bash
+podman compose down --volumes 2>/dev/null
+podman rm -f $(podman ps -aq) 2>/dev/null
+podman pod rm -f $(podman pod ls -q) 2>/dev/null
+podman network prune -f
+podman volume prune -f
+```
